@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CineWave</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #141414; --surface: #1f1f1f; --surface2: #2a2a2a;
+      --accent: #e50914; --gold: #f5c518; --text: #fff; --muted: #b3b3b3;
+      --card-w: 190px;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    html{scroll-behavior:smooth;}
+    body{background:var(--bg);color:var(--text);font-family:'Helvetica Neue',Arial,sans-serif;overflow-x:hidden;}
+
+    /* NAV */
+    #nav{position:fixed;top:0;left:0;right:0;z-index:900;display:flex;align-items:center;gap:2rem;padding:0 4%;height:68px;background:linear-gradient(180deg,rgba(0,0,0,.7) 10%,transparent);transition:background .4s;}
+    #nav.solid{background:#141414;}
+    .nav-logo{font-family:'Bebas Neue',sans-serif;font-size:1.9rem;letter-spacing:3px;color:var(--accent);text-decoration:none;flex-shrink:0;}
+    .nav-links{display:flex;gap:1.2rem;list-style:none;}
+    .nav-links a{color:var(--muted);text-decoration:none;font-size:.85rem;transition:color .15s;cursor:pointer;}
+    .nav-links a:hover,.nav-links a.active{color:#fff;}
+    .nav-right{margin-left:auto;display:flex;align-items:center;gap:1.2rem;}
+    .search-wrap{position:relative;display:flex;align-items:center;}
+    .search-icon{color:var(--muted);cursor:pointer;font-size:1.1rem;}
+    #searchInput{width:0;overflow:hidden;opacity:0;background:rgba(0,0,0,.8);border:1px solid #fff;color:#fff;padding:0 .75rem;height:32px;font-size:.85rem;border-radius:3px;transition:all .3s;outline:none;}
+    #searchInput.open{width:220px;opacity:1;margin-left:.5rem;}
+    .nav-bell{color:var(--muted);font-size:1.1rem;cursor:pointer;}
+    .nav-avatar{width:32px;height:32px;border-radius:4px;background:linear-gradient(135deg,#e87c03,#c01a1a);display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700;cursor:pointer;position:relative;}
+    .nav-dropdown{position:relative;}
+    .dropdown-menu{display:none;position:absolute;top:calc(100% + .5rem);right:0;background:rgba(0,0,0,.95);border:1px solid #444;border-radius:4px;min-width:180px;padding:.4rem 0;z-index:999;}
+    .nav-dropdown:hover .dropdown-menu{display:block;}
+    .dropdown-menu a{display:block;padding:.55rem 1rem;color:var(--muted);text-decoration:none;font-size:.82rem;transition:color .15s;cursor:pointer;}
+    .dropdown-menu a:hover{color:#fff;}
+    .dropdown-divider{border-color:#333;margin:.25rem 0;}
+
+    /* HERO */
+    #hero{position:relative;height:100vh;min-height:500px;display:flex;align-items:flex-end;padding:0 4% 16%;overflow:hidden;}
+    .hero-backdrop{position:absolute;inset:0;background-size:cover;background-position:center 20%;}
+    .hero-vignette{position:absolute;inset:0;background:linear-gradient(77deg,rgba(0,0,0,.6) 0%,transparent 85%),linear-gradient(180deg,rgba(20,20,20,0) 0%,rgba(20,20,20,.15) 50%,rgba(20,20,20,.35) 75%,#141414 100%),linear-gradient(0deg,rgba(0,0,0,.4) 0%,transparent 20%);}
+    .hero-content{position:relative;z-index:2;max-width:36vw;min-width:320px;}
+    .hero-title-text{font-family:'Bebas Neue',sans-serif;font-size:clamp(2.5rem,5vw,5rem);line-height:1;letter-spacing:1px;text-shadow:2px 2px 8px rgba(0,0,0,.5);margin-bottom:1.2rem;}
+    .hero-info-row{display:flex;align-items:center;gap:.75rem;margin-bottom:1rem;}
+    .hero-match{color:#46d369;font-weight:700;font-size:1rem;}
+    .hero-year,.hero-dur{color:var(--muted);font-size:.85rem;}
+    .hero-age{border:1px solid var(--muted);border-radius:3px;padding:0 .4rem;font-size:.75rem;color:var(--muted);}
+    .hero-desc{color:rgba(255,255,255,.85);line-height:1.65;font-size:1rem;margin-bottom:1.5rem;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+    .hero-btns{display:flex;gap:.75rem;}
+    .btn-play{display:flex;align-items:center;gap:.5rem;background:#fff;color:#000;border:none;padding:.6rem 1.8rem;border-radius:4px;font-size:1.1rem;font-weight:700;cursor:pointer;transition:background .15s;font-family:inherit;}
+    .btn-play:hover{background:rgba(255,255,255,.75);}
+    .btn-more-info{display:flex;align-items:center;gap:.5rem;background:rgba(109,109,110,.7);color:#fff;border:none;padding:.6rem 1.8rem;border-radius:4px;font-size:1.1rem;font-weight:700;cursor:pointer;transition:background .15s;font-family:inherit;}
+    .btn-more-info:hover{background:rgba(109,109,110,.4);}
+
+    /* EMPTY */
+    #emptyState{display:none;flex-direction:column;align-items:center;justify-content:center;min-height:85vh;text-align:center;padding:2rem;}
+    #emptyState.show{display:flex;}
+    .empty-icon{font-size:5rem;margin-bottom:1.5rem;opacity:.3;}
+    .empty-title{font-size:1.8rem;font-weight:700;margin-bottom:.75rem;}
+    .empty-sub{color:var(--muted);font-size:1rem;margin-bottom:2rem;max-width:400px;line-height:1.6;}
+    .btn-admin{display:inline-flex;align-items:center;gap:.5rem;background:var(--accent);color:#fff;padding:.75rem 2rem;border-radius:4px;text-decoration:none;font-weight:700;font-size:1rem;}
+
+    /* CONTENT ROWS */
+    #content{padding-bottom:5rem;position:relative;z-index:1;margin-top:-6rem;}
+    .row-section{padding:0 4% 2rem;}
+    .row-header{display:flex;align-items:baseline;gap:1rem;margin-bottom:.75rem;}
+    .row-title{font-size:1.25rem;font-weight:700;}
+    .row-explore{color:#54b9c5;font-size:.82rem;font-weight:700;text-decoration:none;opacity:0;transition:opacity .2s;display:flex;align-items:center;gap:.3rem;}
+    .row-section:hover .row-explore{opacity:1;}
+    .slider-wrap{position:relative;}
+    .slider-btn{position:absolute;top:50%;transform:translateY(-50%);z-index:20;width:4%;min-width:40px;height:100%;background:rgba(20,20,20,.5);border:none;color:#fff;font-size:1.5rem;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s,background .2s;}
+    .slider-wrap:hover .slider-btn{opacity:1;}
+    .slider-btn:hover{background:rgba(20,20,20,.9);}
+    .slider-btn.prev{left:-4%;border-radius:0 4px 4px 0;}
+    .slider-btn.next{right:-4%;border-radius:4px 0 0 4px;}
+    .cards-row{display:flex;gap:4px;overflow-x:auto;padding:1rem 0;scrollbar-width:none;scroll-behavior:smooth;}
+    .cards-row::-webkit-scrollbar{display:none;}
+
+    /* CARD */
+    .card{flex-shrink:0;width:var(--card-w);border-radius:4px;overflow:visible;cursor:pointer;position:relative;transition:transform .3s,z-index 0s .3s;}
+    .card:hover{transform:scale(1.35);z-index:100;transition:transform .3s,z-index 0s;}
+    .card:first-child:hover{transform-origin:left center;}
+    .card:last-child:hover{transform-origin:right center;}
+    .card-thumb{width:100%;aspect-ratio:16/9;border-radius:4px;overflow:hidden;position:relative;}
+    .card-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+    .card-placeholder{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.4rem;font-size:1.5rem;}
+    .card-placeholder .tlabel{font-size:.55rem;color:rgba(255,255,255,.5);max-width:85%;text-align:center;line-height:1.3;}
+    .card-hover-info{position:absolute;top:100%;left:0;right:0;background:#1f1f1f;border-radius:0 0 4px 4px;padding:.6rem .75rem;opacity:0;pointer-events:none;transition:opacity .2s;box-shadow:0 8px 24px rgba(0,0,0,.8);}
+    .card:hover .card-hover-info{opacity:1;pointer-events:all;}
+    .card-hover-btns{display:flex;align-items:center;gap:.4rem;margin-bottom:.5rem;}
+    .card-btn{width:30px;height:30px;border-radius:50%;border:2px solid rgba(255,255,255,.5);background:rgba(42,42,42,.6);color:#fff;font-size:.7rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:border-color .15s;}
+    .card-btn:hover{border-color:#fff;}
+    .card-btn.play-btn{background:#fff;border-color:#fff;color:#000;font-size:.85rem;}
+    .card-btn.ml-a{margin-left:auto;}
+    .card-hover-title{font-size:.78rem;font-weight:700;margin-bottom:.3rem;}
+    .card-hover-meta{display:flex;gap:.5rem;font-size:.68rem;align-items:center;}
+    .card-match{color:#46d369;font-weight:700;}
+    .card-year{color:var(--muted);}
+    .card-hd{border:1px solid var(--muted);border-radius:2px;padding:0 3px;font-size:.6rem;color:var(--muted);}
+    .card-badge-pill{position:absolute;top:6px;left:6px;background:var(--accent);color:#fff;font-size:.6rem;padding:.15rem .4rem;border-radius:2px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;z-index:2;}
+    .card-prog{position:absolute;bottom:0;left:0;right:0;height:3px;background:rgba(255,255,255,.2);}
+    .card-prog-fill{height:100%;background:var(--accent);}
+
+    /* DETAIL MODAL */
+    #detailOverlay{position:fixed;inset:0;z-index:1100;background:rgba(0,0,0,.7);display:none;align-items:flex-start;justify-content:center;padding:2rem 1rem;overflow-y:auto;}
+    #detailOverlay.open{display:flex;}
+    .detail-modal{background:#181818;border-radius:6px;width:100%;max-width:850px;position:relative;margin:auto;animation:modalIn .3s ease;overflow:hidden;}
+    @keyframes modalIn{from{transform:scale(.9);opacity:0}to{transform:scale(1);opacity:1}}
+    .detail-close{position:absolute;top:1rem;right:1rem;z-index:10;width:36px;height:36px;border-radius:50%;background:#181818;border:none;color:#fff;font-size:1.2rem;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+    .detail-hero-area{position:relative;aspect-ratio:16/9;background:#000;overflow:hidden;}
+    .detail-hero-area img,.detail-hero-area video{width:100%;height:100%;object-fit:cover;}
+    .detail-hero-grad{position:absolute;bottom:0;left:0;right:0;height:55%;background:linear-gradient(to top,#181818,transparent);}
+    .detail-hero-content{position:absolute;bottom:1.5rem;left:2rem;right:2rem;z-index:2;}
+    .detail-title{font-family:'Bebas Neue',sans-serif;font-size:2.5rem;margin-bottom:1rem;letter-spacing:1px;}
+    .detail-btns{display:flex;gap:.75rem;flex-wrap:wrap;}
+    .btn-dp{display:flex;align-items:center;gap:.5rem;background:#fff;color:#000;border:none;padding:.55rem 1.5rem;border-radius:4px;font-size:1rem;font-weight:700;cursor:pointer;transition:background .15s;font-family:inherit;}
+    .btn-dp:hover{background:rgba(255,255,255,.75);}
+    .btn-dm{display:flex;align-items:center;gap:.5rem;background:rgba(109,109,110,.7);color:#fff;border:none;padding:.55rem 1.5rem;border-radius:4px;font-size:1rem;font-weight:700;cursor:pointer;font-family:inherit;}
+    .btn-di{width:40px;height:40px;border-radius:50%;background:transparent;border:2px solid rgba(255,255,255,.5);color:#fff;font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:border-color .15s;}
+    .btn-di:hover{border-color:#fff;}
+    .detail-body{padding:1.5rem 2rem 2rem;}
+    .detail-meta-row{display:flex;gap:1rem;align-items:center;margin-bottom:1rem;flex-wrap:wrap;}
+    .d-match{color:#46d369;font-weight:700;font-size:.95rem;}
+    .d-year,.d-seasons,.d-dur{color:var(--muted);font-size:.9rem;}
+    .d-hd{border:1px solid var(--muted);border-radius:3px;padding:.1rem .4rem;font-size:.72rem;color:var(--muted);}
+    .detail-cols{display:grid;grid-template-columns:2fr 1fr;gap:2rem;}
+    .detail-desc{font-size:.95rem;line-height:1.65;}
+    .detail-tags{font-size:.82rem;color:var(--muted);line-height:1.9;}
+    .detail-tags strong{color:#fff;}
+    .detail-episodes{margin-top:1.5rem;}
+    .detail-ep-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;}
+    .detail-ep-title{font-size:1.2rem;font-weight:700;}
+    .season-select{background:#2a2a2a;border:1px solid #555;color:#fff;padding:.4rem .75rem;border-radius:4px;font-size:.85rem;cursor:pointer;outline:none;}
+    .ep-list{display:flex;flex-direction:column;}
+    .ep-item{display:flex;align-items:flex-start;gap:1rem;padding:1rem 0.5rem;border-bottom:1px solid #2a2a2a;cursor:pointer;transition:background .15s;border-radius:4px;}
+    .ep-item:hover{background:rgba(255,255,255,.05);}
+    .ep-num{color:var(--muted);font-size:1.2rem;width:24px;text-align:center;flex-shrink:0;margin-top:.2rem;}
+    .ep-thumb{width:130px;flex-shrink:0;aspect-ratio:16/9;background:#333;border-radius:3px;overflow:hidden;position:relative;}
+    .ep-thumb img{width:100%;height:100%;object-fit:cover;}
+    .ep-play-hover{position:absolute;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .15s;}
+    .ep-item:hover .ep-play-hover{opacity:1;}
+    .ep-info{flex:1;}
+    .ep-title-dur{display:flex;justify-content:space-between;margin-bottom:.3rem;}
+    .ep-title-text{font-size:.9rem;font-weight:600;}
+    .ep-dur-text{color:var(--muted);font-size:.82rem;}
+    .ep-desc-text{color:var(--muted);font-size:.82rem;line-height:1.5;}
+
+    /* FOOTER */
+    footer{padding:4rem 4% 2rem;color:var(--muted);}
+    .footer-social{display:flex;gap:1.5rem;margin-bottom:1.5rem;font-size:1.4rem;}
+    .footer-social a{color:var(--muted);transition:color .2s;text-decoration:none;}
+    .footer-social a:hover{color:#fff;}
+    .footer-links{display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem 1rem;margin-bottom:1.5rem;}
+    .footer-links a{color:var(--muted);font-size:.78rem;text-decoration:none;}
+    .footer-links a:hover{text-decoration:underline;}
+    .footer-bottom{font-size:.75rem;color:#555;}
+
+    @media(max-width:768px){
+      .nav-links{display:none;}
+      :root{--card-w:130px;}
+      .hero-content{max-width:80%;}
+      .detail-cols{grid-template-columns:1fr;}
+      .footer-links{grid-template-columns:repeat(2,1fr);}
+    }
+  </style>
+</head>
+<body>
+
+<nav id="nav">
+  <a class="nav-logo" href="index.html">CINEWAVE</a>
+  <ul class="nav-links">
+    <li><a class="active" onclick="setActive(this);currentFilter=null;renderAll();">Home</a></li>
+    <li><a onclick="setActive(this);filterType('series')">TV Shows</a></li>
+    <li><a onclick="setActive(this);filterType('movie')">Movies</a></li>
+    <li><a onclick="setActive(this);renderAll()">New &amp; Popular</a></li>
+    <li><a onclick="setActive(this);showMyList()">My List</a></li>
+  </ul>
+  <div class="nav-right">
+    <div class="search-wrap">
+      <span class="search-icon" onclick="toggleSearch()">🔍</span>
+      <input type="text" id="searchInput" placeholder="Titles, genres…" oninput="handleSearch(this.value)" onblur="collapseSearch(this)">
+    </div>
+    <span class="nav-bell">🔔</span>
+    <div class="nav-dropdown">
+      <div class="nav-avatar">A</div>
+      <div class="dropdown-menu">
+        <a href="admin.html">⚙️ Admin Panel</a>
+        <hr class="dropdown-divider">
+        <a onclick="clearAllContent()">🗑️ Delete All Content</a>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section id="hero" style="display:none">
+  <div class="hero-backdrop" id="heroBg"></div>
+  <div class="hero-vignette"></div>
+  <div class="hero-content">
+    <div class="hero-title-text" id="heroTitle"></div>
+    <div class="hero-info-row">
+      <span class="hero-match" id="heroMatch"></span>
+      <span class="hero-year" id="heroYear"></span>
+      <span class="hero-age" id="heroAge">TV-MA</span>
+      <span class="hero-dur" id="heroDur"></span>
+    </div>
+    <p class="hero-desc" id="heroDesc"></p>
+    <div class="hero-btns">
+      <button class="btn-play" id="heroPlayBtn">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg> Play
+      </button>
+      <button class="btn-more-info" id="heroInfoBtn">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg> More Info
+      </button>
+    </div>
+  </div>
+</section>
+
+<!-- EMPTY -->
+<div id="emptyState" style="margin-top:68px">
+  <div class="empty-icon">📭</div>
+  <div class="empty-title">Your library is empty</div>
+  <p class="empty-sub">Upload movies and shows from the Admin Panel to start building your streaming library.</p>
+  <a href="admin.html" class="btn-admin">Go to Admin Panel →</a>
+</div>
+
+<div id="content"></div>
+
+<!-- DETAIL MODAL -->
+<div id="detailOverlay" onclick="closeDetailBg(event)">
+  <div class="detail-modal">
+    <button class="detail-close" onclick="closeDetail()">✕</button>
+    <div class="detail-hero-area" id="detailHeroArea"></div>
+    <div class="detail-body">
+      <div class="detail-hero-grad" style="display:none"></div>
+      <div class="detail-title" id="detailTitle" style="font-family:'Bebas Neue',sans-serif;font-size:2rem;margin-bottom:.75rem;padding:0;"></div>
+      <div id="detailBtns" style="display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1.25rem;"></div>
+      <div class="detail-meta-row" id="detailMeta"></div>
+      <div class="detail-cols">
+        <p class="detail-desc" id="detailDesc"></p>
+        <div class="detail-tags" id="detailTags"></div>
+      </div>
+      <div class="detail-episodes" id="detailEpisodes" style="display:none">
+        <div class="detail-ep-header">
+          <span class="detail-ep-title">Episodes</span>
+          <select class="season-select" id="seasonSelect" onchange="renderEpisodes()"></select>
+        </div>
+        <div class="ep-list" id="epList"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div class="footer-social">
+    <a href="#">📘</a><a href="#">🐦</a><a href="#">📸</a><a href="#">▶️</a>
+  </div>
+  <div class="footer-links">
+    <a href="#">Audio Description</a><a href="#">Help Center</a>
+    <a href="#">Gift Cards</a><a href="#">Media Center</a>
+    <a href="#">Investor Relations</a><a href="#">Jobs</a>
+    <a href="#">Terms of Use</a><a href="#">Privacy</a>
+    <a href="#">Legal Notices</a><a href="#">Cookie Preferences</a>
+    <a href="#">Corporate Information</a><a href="#">Contact Us</a>
+  </div>
+  <div class="footer-bottom">© 2025 CineWave. All rights reserved.</div>
+</footer>
+
+<script>
+/* ───── DATA ───── */
+function load(){return JSON.parse(localStorage.getItem('cinewave_catalog')||'[]');}
+function save(d){localStorage.setItem('cinewave_catalog',JSON.stringify(d));}
+
+let catalog=load();
+let myList=JSON.parse(localStorage.getItem('cinewave_mylist')||'[]');
+let continueWatching=JSON.parse(localStorage.getItem('cinewave_continue')||'[]');
+let currentFilter=null;
+let detailItem=null;
+
+/* ───── NAV ───── */
+window.addEventListener('scroll',()=>document.getElementById('nav').classList.toggle('solid',scrollY>50));
+function setActive(el){document.querySelectorAll('.nav-links a').forEach(a=>a.classList.remove('active'));el.classList.add('active');}
+function toggleSearch(){const i=document.getElementById('searchInput');i.classList.toggle('open');if(i.classList.contains('open'))i.focus();}
+function collapseSearch(i){setTimeout(()=>{if(!i.value)i.classList.remove('open');},200);}
+
+/* ───── DELETE ALL ───── */
+function clearAllContent(){
+  if(!confirm('Delete ALL content from the catalog?\n\nThis cannot be undone.')) return;
+  save([]); localStorage.setItem('cinewave_continue','[]'); localStorage.setItem('cinewave_mylist','[]');
+  catalog=[]; continueWatching=[]; myList=[];
+  renderAll();
+}
+
+/* ───── RENDER ───── */
+function renderAll(){
+  catalog=load();
+  const display=currentFilter?catalog.filter(c=>c.type===currentFilter):catalog;
+  const empty=document.getElementById('emptyState');
+  const hero=document.getElementById('hero');
+  const content=document.getElementById('content');
+
+  if(catalog.length===0){
+    empty.classList.add('show'); hero.style.display='none'; content.innerHTML=''; return;
+  }
+  empty.classList.remove('show');
+
+  const heroItem=display.length>0?display[Math.floor(Math.random()*Math.min(5,display.length))]:null;
+  if(heroItem){hero.style.display='flex';renderHero(heroItem);}
+  else{hero.style.display='none';}
+
+  content.innerHTML='';
+  const cw=continueWatching.map(c=>catalog.find(x=>x.id===c.id)).filter(Boolean);
+  if(cw.length>0) content.appendChild(buildRow('Continue Watching',cw,true));
+  if(display.length>0){
+    content.appendChild(buildRow('Trending Now',shuffle(display).slice(0,14)));
+    const movies=display.filter(c=>c.type==='movie');
+    const series=display.filter(c=>c.type==='series');
+    if(series.length) content.appendChild(buildRow('TV Shows',series));
+    if(movies.length) content.appendChild(buildRow('Movies',movies));
+    if(myList.length){const ml=myList.map(id=>catalog.find(c=>c.id===id)).filter(Boolean);if(ml.length)content.appendChild(buildRow('My List',ml));}
+    if(display.length>4) content.appendChild(buildRow('Popular on CineWave',[...display].reverse().slice(0,14)));
+  }
+}
+
+function renderHero(item){
+  document.getElementById('heroTitle').textContent=item.title;
+  document.getElementById('heroDesc').textContent=item.desc||'';
+  document.getElementById('heroYear').textContent=item.year||'';
+  document.getElementById('heroDur').textContent=item.type==='series'?(item.seasons?item.seasons+' Season'+(item.seasons>1?'s':''):''):(item.dur||'');
+  document.getElementById('heroMatch').textContent=rnd(83,98)+'% Match';
+  const bg=document.getElementById('heroBg');
+  if(item.backdropUrl||item.posterUrl){bg.style.backgroundImage=`url(${item.backdropUrl||item.posterUrl})`;bg.style.background='';}
+  else{bg.style.backgroundImage='none';bg.style.background=`linear-gradient(135deg,${item.color||'#1a1a2a'} 0%,#141414 100%)`;}
+  document.getElementById('heroPlayBtn').onclick=()=>goWatch(item.id);
+  document.getElementById('heroInfoBtn').onclick=()=>openDetail(item.id);
+}
+
+/* ───── ROWS ───── */
+function buildRow(title,items,isContinue=false){
+  const section=document.createElement('div');
+  section.className='row-section';
+  section.innerHTML=`
+    <div class="row-header">
+      <span class="row-title">${title}</span>
+      <a href="#" class="row-explore">Explore All ›</a>
+    </div>
+    <div class="slider-wrap">
+      <button class="slider-btn prev" onclick="slide(this,-1)">‹</button>
+      <div class="cards-row" id="row-${title.replace(/\s/g,'_')}"></div>
+      <button class="slider-btn next" onclick="slide(this,1)">›</button>
+    </div>`;
+  const row=section.querySelector('.cards-row');
+  items.forEach(item=>{
+    const cw=continueWatching.find(c=>c.id===item.id);
+    row.insertAdjacentHTML('beforeend',buildCard(item,cw));
+  });
+  return section;
+}
+
+function buildCard(item,cw=null){
+  const prog=cw?cw.progress:null;
+  const thumb=item.posterUrl||item.backdropUrl||'';
+  const thumbHtml=thumb
+    ?`<img src="${thumb}" alt="${escHtml(item.title)}" loading="lazy">`
+    :`<div class="card-placeholder" style="background:linear-gradient(135deg,${item.color||'#1e1e2e'} 0%,#141414 100%);"><span>${item.type==='movie'?'🎬':'📺'}</span><span class="tlabel">${escHtml(item.title)}</span></div>`;
+  return `
+    <div class="card" onclick="openDetail(${item.id})">
+      <div class="card-thumb">
+        ${item.badge?`<div class="card-badge-pill">${escHtml(item.badge)}</div>`:''}
+        ${thumbHtml}
+        ${prog!==null?`<div class="card-prog"><div class="card-prog-fill" style="width:${prog}%"></div></div>`:''}
+      </div>
+      <div class="card-hover-info">
+        <div class="card-hover-btns">
+          <button class="card-btn play-btn" onclick="event.stopPropagation();goWatch(${item.id})">▶</button>
+          <button class="card-btn" onclick="event.stopPropagation();toggleMyList(${item.id},this)">${myList.includes(item.id)?'✓':'+'}</button>
+          <button class="card-btn" title="Like">👍</button>
+          <button class="card-btn ml-a" onclick="event.stopPropagation();openDetail(${item.id})">⌄</button>
+        </div>
+        <div class="card-hover-title">${escHtml(item.title)}</div>
+        <div class="card-hover-meta">
+          <span class="card-match">${rnd(82,98)}% Match</span>
+          <span class="card-year">${item.year||''}</span>
+          <span class="card-hd">HD</span>
+        </div>
+      </div>
+    </div>`;
+}
+
+function slide(btn,dir){const r=btn.closest('.slider-wrap').querySelector('.cards-row');r.scrollBy({left:dir*r.clientWidth*.8,behavior:'smooth'});}
+function shuffle(a){return[...a].sort(()=>Math.random()-.5);}
+function rnd(a,b){return Math.floor(Math.random()*(b-a+1)+a);}
+function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+/* ───── FILTERS ───── */
+function filterType(type){currentFilter=type;renderAll();window.scrollTo({top:0,behavior:'smooth'});}
+function showMyList(){
+  currentFilter=null;
+  document.getElementById('hero').style.display='none';
+  const content=document.getElementById('content');
+  const ml=myList.map(id=>catalog.find(c=>c.id===id)).filter(Boolean);
+  content.innerHTML='';
+  if(!ml.length){content.innerHTML=`<div style="padding:6rem 4%;color:var(--muted);text-align:center"><div style="font-size:3rem;margin-bottom:1rem">📋</div><div style="font-size:1.3rem;font-weight:700;color:#fff;margin-bottom:.5rem">Your list is empty</div><p>Add titles by clicking + on any card.</p></div>`;return;}
+  content.appendChild(buildRow('My List',ml));
+}
+function handleSearch(q){
+  if(!q.trim()){currentFilter=null;renderAll();return;}
+  catalog=load();
+  const results=catalog.filter(c=>c.title.toLowerCase().includes(q.toLowerCase())||(c.genre||'').toLowerCase().includes(q.toLowerCase())||(c.desc||'').toLowerCase().includes(q.toLowerCase()));
+  document.getElementById('hero').style.display='none';
+  const content=document.getElementById('content');content.innerHTML='';
+  if(results.length){content.appendChild(buildRow(`Results for "${q}"`,results));}
+  else{content.innerHTML=`<div style="padding:6rem 4%;color:var(--muted);text-align:center"><div style="font-size:1.2rem;color:#fff">No results for "<strong>${escHtml(q)}</strong>"</div></div>`;}
+}
+
+/* ───── MY LIST ───── */
+function toggleMyList(id,btn){
+  if(myList.includes(id)){myList=myList.filter(x=>x!==id);if(btn)btn.textContent='+';}
+  else{myList.push(id);if(btn)btn.textContent='✓';}
+  localStorage.setItem('cinewave_mylist',JSON.stringify(myList));
+}
+
+/* ───── WATCH ───── */
+function goWatch(id){window.location.href=`watch.html?id=${id}`;}
+
+/* ───── DETAIL MODAL ───── */
+function openDetail(id){
+  catalog=load();
+  const item=catalog.find(c=>c.id===id);if(!item)return;
+  detailItem=item;
+
+  // Hero area
+  const heroArea=document.getElementById('detailHeroArea');
+  if(item.backdropUrl||item.posterUrl){
+    heroArea.innerHTML=`<img src="${item.backdropUrl||item.posterUrl}" style="width:100%;height:100%;object-fit:cover"><div class="detail-hero-grad"></div><div style="position:absolute;bottom:1.5rem;left:2rem;right:2rem;z-index:2"><div class="detail-title">${escHtml(item.title)}</div><div id="detailBtnsInner"></div></div>`;
+    heroArea.style.aspectRatio='16/9';
+    document.getElementById('detailTitle').style.display='none';
+    document.getElementById('detailBtns').style.display='none';
+    heroArea.querySelector('#detailBtnsInner').innerHTML=detailBtnHtml(item);
+  } else {
+    heroArea.innerHTML=`<div style="width:100%;aspect-ratio:16/9;background:linear-gradient(135deg,${item.color||'#1e1e2e'},#141414);display:flex;align-items:center;justify-content:center;font-size:4rem;">${item.type==='movie'?'🎬':'📺'}</div>`;
+    document.getElementById('detailTitle').style.display='block';
+    document.getElementById('detailTitle').textContent=item.title;
+    document.getElementById('detailBtns').style.display='flex';
+    document.getElementById('detailBtns').innerHTML=detailBtnHtml(item);
+  }
+
+  document.getElementById('detailMeta').innerHTML=`
+    <span class="d-match">${rnd(83,98)}% Match</span>
+    <span class="d-year">${item.year||''}</span>
+    ${item.type==='series'?`<span class="d-seasons">${item.seasons||1} Season${(item.seasons||1)>1?'s':''}</span>`:`<span class="d-dur">${item.dur||''}</span>`}
+    <span class="d-hd">HD</span>`;
+  document.getElementById('detailDesc').textContent=item.desc||'No description available.';
+  document.getElementById('detailTags').innerHTML=`
+    ${item.genre?`<div><strong>Genre:</strong> ${escHtml(item.genre)}</div>`:''}
+    <div><strong>Type:</strong> ${item.type==='movie'?'Movie':'TV Series'}</div>
+    ${item.rating?`<div><strong>Rating:</strong> ★ ${item.rating}</div>`:''}`;
+
+  const epSec=document.getElementById('detailEpisodes');
+  if(item.type==='series'&&item.episodes&&item.episodes.length){
+    epSec.style.display='block';
+    const seasons=[...new Set(item.episodes.map(e=>e.s))].sort();
+    document.getElementById('seasonSelect').innerHTML=seasons.map(s=>`<option value="${s}">Season ${s}</option>`).join('');
+    renderEpisodes();
+  } else {epSec.style.display='none';}
+
+  document.getElementById('detailOverlay').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+
+function detailBtnHtml(item){
+  return `
+    <button class="btn-dp" onclick="goWatch(${item.id})"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg> Play</button>
+    <button class="btn-dm"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg> More Info</button>
+    <button class="btn-di" onclick="toggleMyList(${item.id},this)">${myList.includes(item.id)?'✓':'+'}</button>
+    <button class="btn-di">👍</button>`;
+}
+
+function renderEpisodes(){
+  if(!detailItem||!detailItem.episodes)return;
+  const season=parseInt(document.getElementById('seasonSelect').value);
+  const eps=detailItem.episodes.filter(e=>e.s===season);
+  document.getElementById('epList').innerHTML=eps.map(ep=>`
+    <div class="ep-item" onclick="goWatch(${detailItem.id})">
+      <span class="ep-num">${ep.e}</span>
+      <div class="ep-thumb">
+        <div style="width:100%;height:100%;background:#2a2a2a;display:flex;align-items:center;justify-content:center;font-size:1.2rem">📺</div>
+        <div class="ep-play-hover"><svg width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg></div>
+      </div>
+      <div class="ep-info">
+        <div class="ep-title-dur"><span class="ep-title-text">${escHtml(ep.title)}</span><span class="ep-dur-text">${ep.dur||''}</span></div>
+        <p class="ep-desc-text">${ep.desc||'Click to watch this episode.'}</p>
+      </div>
+    </div>`).join('');
+}
+
+function closeDetail(){document.getElementById('detailOverlay').classList.remove('open');document.body.style.overflow='';}
+function closeDetailBg(e){if(e.target===document.getElementById('detailOverlay'))closeDetail();}
+
+/* ───── INIT ───── */
+document.addEventListener('DOMContentLoaded',renderAll);
+</script>
+</body>
+</html>

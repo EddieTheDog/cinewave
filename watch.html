@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Watch – CineWave</title>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    html,body{width:100%;height:100%;background:#000;overflow:hidden;font-family:'Helvetica Neue',Arial,sans-serif;color:#fff;}
+
+    /* ── PLAYER SHELL ── */
+    #player{position:relative;width:100vw;height:100vh;background:#000;cursor:none;}
+    #player.show-ui{cursor:default;}
+    #videoEl{width:100%;height:100%;object-fit:contain;display:block;}
+
+    /* YouTube / iframe embed */
+    #iframeEl{width:100%;height:100%;border:none;display:none;}
+
+    /* Placeholder when no video */
+    #noVideo{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.5rem;background:linear-gradient(135deg,#1a1a2e,#000);z-index:2;}
+    #noVideo .nv-icon{font-size:5rem;opacity:.4;}
+    #noVideo .nv-title{font-size:1.5rem;font-weight:700;opacity:.7;}
+    #noVideo .nv-sub{font-size:.9rem;color:#888;text-align:center;max-width:360px;line-height:1.6;}
+    #noVideo .nv-btn{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.3);color:#fff;padding:.6rem 1.5rem;border-radius:4px;cursor:pointer;font-size:.9rem;text-decoration:none;display:inline-block;margin-top:.5rem;}
+    #noVideo .nv-btn:hover{background:rgba(255,255,255,.2);}
+
+    /* ── TOP BAR ── */
+    #topBar{
+      position:absolute;top:0;left:0;right:0;z-index:10;
+      padding:1.5rem 3%;
+      background:linear-gradient(180deg,rgba(0,0,0,.85) 0%,transparent 100%);
+      display:flex;align-items:center;gap:1.5rem;
+      transition:opacity .3s;
+    }
+    #player.hide-ui #topBar{opacity:0;pointer-events:none;}
+    .back-btn{
+      background:none;border:none;color:#fff;font-size:1.5rem;
+      cursor:pointer;display:flex;align-items:center;gap:.5rem;
+      opacity:.85;transition:opacity .15s;padding:0;
+    }
+    .back-btn:hover{opacity:1;}
+    .top-title{font-size:1.1rem;font-weight:700;opacity:.9;}
+    .top-episode{font-size:.85rem;color:#ccc;opacity:.8;}
+    .top-right{margin-left:auto;display:flex;gap:1rem;align-items:center;}
+    .top-icon-btn{background:none;border:none;color:#fff;font-size:1.2rem;cursor:pointer;opacity:.8;transition:opacity .15s;padding:.25rem;}
+    .top-icon-btn:hover{opacity:1;}
+
+    /* ── BOTTOM CONTROLS ── */
+    #controls{
+      position:absolute;bottom:0;left:0;right:0;z-index:10;
+      padding:0 3% 1.5rem;
+      background:linear-gradient(0deg,rgba(0,0,0,.9) 0%,transparent 100%);
+      transition:opacity .3s;
+    }
+    #player.hide-ui #controls{opacity:0;pointer-events:none;}
+
+    /* Progress / Timeline */
+    .timeline-wrap{position:relative;height:20px;display:flex;align-items:center;margin-bottom:.75rem;cursor:pointer;}
+    .timeline-track{position:absolute;left:0;right:0;height:3px;background:rgba(255,255,255,.3);border-radius:2px;transition:height .15s;}
+    .timeline-wrap:hover .timeline-track{height:5px;}
+    .timeline-buf{position:absolute;left:0;height:100%;background:rgba(255,255,255,.4);border-radius:2px;}
+    .timeline-fill{position:absolute;left:0;height:100%;background:#e50914;border-radius:2px;transition:width .1s;}
+    .timeline-thumb{
+      position:absolute;top:50%;transform:translate(-50%,-50%) scale(0);
+      width:14px;height:14px;border-radius:50%;background:#e50914;
+      transition:transform .15s;
+    }
+    .timeline-wrap:hover .timeline-thumb{transform:translate(-50%,-50%) scale(1);}
+    .timeline-tooltip{
+      position:absolute;bottom:calc(100% + 8px);
+      background:rgba(0,0,0,.8);color:#fff;padding:.2rem .5rem;
+      border-radius:3px;font-size:.75rem;pointer-events:none;
+      white-space:nowrap;transform:translateX(-50%);display:none;
+    }
+    .timeline-wrap:hover .timeline-tooltip{display:block;}
+
+    /* Buttons row */
+    .ctrl-row{display:flex;align-items:center;gap:.75rem;}
+    .ctrl-btn{background:none;border:none;color:#fff;font-size:1.4rem;cursor:pointer;padding:.25rem;opacity:.85;transition:opacity .15s;display:flex;align-items:center;}
+    .ctrl-btn:hover{opacity:1;}
+    .ctrl-btn.big{font-size:2rem;}
+    .time-display{font-size:.85rem;color:#ccc;white-space:nowrap;margin:0 .5rem;}
+    .ctrl-right{margin-left:auto;display:flex;align-items:center;gap:.5rem;}
+
+    /* Volume slider */
+    .vol-wrap{display:flex;align-items:center;gap:.5rem;}
+    .vol-slider{-webkit-appearance:none;appearance:none;width:80px;height:4px;border-radius:2px;background:rgba(255,255,255,.3);outline:none;cursor:pointer;}
+    .vol-slider::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:#fff;}
+
+    /* Skip ripple */
+    .skip-ripple{
+      position:absolute;top:50%;transform:translateY(-50%);
+      display:flex;flex-direction:column;align-items:center;gap:.3rem;
+      opacity:0;transition:opacity .2s;pointer-events:none;z-index:5;
+    }
+    .skip-ripple.left{left:8%;}
+    .skip-ripple.right{right:8%;}
+    .skip-ripple.show{opacity:1;}
+    .skip-circle{width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:1.5rem;}
+    .skip-label{font-size:.75rem;color:#ccc;}
+
+    /* Centre play/pause flash */
+    #centreFlash{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:8;opacity:0;pointer-events:none;transition:opacity .3s;font-size:4rem;}
+
+    /* EPISODE PANEL */
+    #epPanel{
+      position:absolute;top:0;right:0;bottom:0;width:320px;
+      background:#141414;border-left:1px solid #222;
+      overflow-y:auto;z-index:20;
+      transform:translateX(100%);transition:transform .3s;
+    }
+    #epPanel.open{transform:translateX(0);}
+    .ep-panel-header{display:flex;align-items:center;justify-content:space-between;padding:1.25rem;border-bottom:1px solid #222;position:sticky;top:0;background:#141414;z-index:2;}
+    .ep-panel-title{font-size:1rem;font-weight:700;}
+    .ep-panel-close{background:none;border:none;color:#fff;font-size:1.2rem;cursor:pointer;}
+    .ep-panel-item{display:flex;gap:.75rem;padding:1rem 1.25rem;cursor:pointer;border-bottom:1px solid #1a1a1a;transition:background .15s;}
+    .ep-panel-item:hover{background:#1f1f1f;}
+    .ep-panel-item.active{background:#1f1f1f;border-left:3px solid #e50914;}
+    .ep-panel-thumb{width:90px;flex-shrink:0;aspect-ratio:16/9;background:#2a2a2a;border-radius:3px;overflow:hidden;position:relative;}
+    .ep-panel-thumb img{width:100%;height:100%;object-fit:cover;}
+    .ep-panel-info{}
+    .ep-panel-name{font-size:.82rem;font-weight:600;margin-bottom:.2rem;}
+    .ep-panel-meta{font-size:.72rem;color:#888;}
+    .ep-panel-prog{height:2px;background:#333;margin-top:.4rem;border-radius:1px;}
+    .ep-panel-prog-fill{height:100%;background:#e50914;border-radius:1px;}
+
+    /* NEXT EPISODE CARD */
+    #nextEpCard{
+      position:absolute;bottom:120px;right:3%;z-index:15;
+      background:#141414;border:1px solid #333;border-radius:6px;
+      padding:1rem;width:260px;display:none;
+    }
+    #nextEpCard.show{display:block;animation:fadeIn .3s ease;}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+    .nec-label{font-size:.72rem;color:#ccc;margin-bottom:.5rem;text-transform:uppercase;letter-spacing:.5px;}
+    .nec-title{font-size:.9rem;font-weight:700;margin-bottom:.75rem;}
+    .nec-btn{background:#fff;color:#000;border:none;padding:.5rem 1.2rem;border-radius:4px;font-weight:700;cursor:pointer;font-size:.85rem;width:100%;}
+    .nec-btn:hover{background:rgba(255,255,255,.8);}
+
+    /* Keyboard hint */
+    #kbHint{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:30;background:rgba(0,0,0,.75);border:1px solid #333;border-radius:8px;padding:1.5rem 2rem;display:none;}
+    #kbHint.show{display:block;}
+    .kb-row{display:flex;align-items:center;gap:1rem;padding:.3rem 0;}
+    .kb-key{background:#333;border-radius:4px;padding:.2rem .5rem;font-size:.75rem;font-weight:700;min-width:32px;text-align:center;}
+    .kb-desc{font-size:.82rem;color:#ccc;}
+  </style>
+</head>
+<body>
+
+<div id="player" class="show-ui">
+
+  <!-- VIDEO / IFRAME -->
+  <video id="videoEl" preload="metadata"></video>
+  <iframe id="iframeEl" allowfullscreen allow="autoplay; encrypted-media"></iframe>
+
+  <!-- No video placeholder -->
+  <div id="noVideo" style="display:none">
+    <div class="nv-icon">🎬</div>
+    <div class="nv-title" id="nvTitle">No video file uploaded</div>
+    <p class="nv-sub" id="nvSub">Upload a video file or add a YouTube trailer URL from the Admin Panel to watch this title.</p>
+    <a href="admin.html" class="nv-btn">Go to Admin Panel</a>
+    <a href="index.html" class="nv-btn" style="margin-left:.5rem">← Back to Browse</a>
+  </div>
+
+  <!-- Skip ripples -->
+  <div class="skip-ripple left" id="skipLeft"><div class="skip-circle">⏮ 10s</div></div>
+  <div class="skip-ripple right" id="skipRight"><div class="skip-circle">10s ⏭</div></div>
+
+  <!-- Centre flash -->
+  <div id="centreFlash">▶</div>
+
+  <!-- TOP BAR -->
+  <div id="topBar">
+    <button class="back-btn" onclick="history.back()">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+      Back
+    </button>
+    <div>
+      <div class="top-title" id="topTitle">Loading…</div>
+      <div class="top-episode" id="topEpisode"></div>
+    </div>
+    <div class="top-right">
+      <button class="top-icon-btn" title="Keyboard shortcuts" onclick="toggleKbHint()">⌨</button>
+      <button class="top-icon-btn" id="epToggleBtn" style="display:none" title="Episodes" onclick="toggleEpPanel()">☰ Episodes</button>
+    </div>
+  </div>
+
+  <!-- BOTTOM CONTROLS -->
+  <div id="controls">
+    <!-- Timeline -->
+    <div class="timeline-wrap" id="timeline" onclick="seekClick(event)" onmousemove="timelineHover(event)" onmouseleave="timelineLeave()">
+      <div class="timeline-track">
+        <div class="timeline-buf" id="bufBar"></div>
+        <div class="timeline-fill" id="progBar"></div>
+        <div class="timeline-thumb" id="progThumb"></div>
+      </div>
+      <div class="timeline-tooltip" id="timeTooltip">0:00</div>
+    </div>
+
+    <!-- Buttons -->
+    <div class="ctrl-row">
+      <button class="ctrl-btn big" id="playPauseBtn" onclick="togglePlay()" title="Play/Pause">⏸</button>
+      <button class="ctrl-btn" onclick="skip(-10)" title="Rewind 10s">⏮</button>
+      <button class="ctrl-btn" onclick="skip(10)" title="Forward 10s">⏭</button>
+      <div class="vol-wrap">
+        <button class="ctrl-btn" id="muteBtn" onclick="toggleMute()" title="Mute">🔊</button>
+        <input type="range" class="vol-slider" id="volSlider" min="0" max="1" step="0.02" value="1" oninput="setVolume(this.value)">
+      </div>
+      <span class="time-display" id="timeDisplay">0:00 / 0:00</span>
+
+      <div class="ctrl-right">
+        <button class="ctrl-btn" id="subBtn" onclick="toggleSubs()" title="Subtitles" style="font-size:1rem;">CC</button>
+        <button class="ctrl-btn" id="speedBtn" onclick="cycleSpeed()" title="Playback speed" style="font-size:.85rem;">1×</button>
+        <button class="ctrl-btn" onclick="toggleFullscreen()" title="Fullscreen">⛶</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- NEXT EPISODE CARD -->
+  <div id="nextEpCard">
+    <div class="nec-label">Next Episode</div>
+    <div class="nec-title" id="nextEpTitle">—</div>
+    <button class="nec-btn" onclick="playNextEp()">▶ Play Next</button>
+  </div>
+
+  <!-- EPISODE PANEL -->
+  <div id="epPanel">
+    <div class="ep-panel-header">
+      <span class="ep-panel-title">Episodes</span>
+      <button class="ep-panel-close" onclick="toggleEpPanel()">✕</button>
+    </div>
+    <div id="epPanelList"></div>
+  </div>
+
+  <!-- KEYBOARD HINT -->
+  <div id="kbHint">
+    <div style="font-weight:700;margin-bottom:1rem;">Keyboard Shortcuts</div>
+    <div class="kb-row"><span class="kb-key">Space</span><span class="kb-desc">Play / Pause</span></div>
+    <div class="kb-row"><span class="kb-key">←</span><span class="kb-desc">Rewind 10s</span></div>
+    <div class="kb-row"><span class="kb-key">→</span><span class="kb-desc">Forward 10s</span></div>
+    <div class="kb-row"><span class="kb-key">F</span><span class="kb-desc">Fullscreen</span></div>
+    <div class="kb-row"><span class="kb-key">M</span><span class="kb-desc">Mute</span></div>
+    <div class="kb-row"><span class="kb-key">Esc</span><span class="kb-desc">Back</span></div>
+    <div style="text-align:right;margin-top:1rem;"><button onclick="toggleKbHint()" style="background:none;border:none;color:#888;cursor:pointer;font-size:.8rem;">Close</button></div>
+  </div>
+</div>
+
+<script>
+/* ── INIT ── */
+const params = new URLSearchParams(location.search);
+const itemId = parseInt(params.get('id'));
+const catalog = JSON.parse(localStorage.getItem('cinewave_catalog') || '[]');
+const item = catalog.find(c => c.id === itemId);
+
+const videoEl = document.getElementById('videoEl');
+const iframeEl = document.getElementById('iframeEl');
+const player = document.getElementById('player');
+
+let currentEpIdx = 0;
+let speeds = [0.5, 0.75, 1, 1.25, 1.5, 2];
+let speedIdx = 2;
+let hideTimer = null;
+let isYouTube = false;
+
+if (!item) {
+  document.getElementById('noVideo').style.display = 'flex';
+  document.getElementById('topTitle').textContent = 'Not Found';
+} else {
+  document.title = item.title + ' – CineWave';
+  document.getElementById('topTitle').textContent = item.title;
+  initPlayer(item);
+}
+
+function initPlayer(item) {
+  const videoUrl = item.videoUrl || '';
+  const trailerUrl = item.trailerUrl || '';
+  const src = videoUrl || trailerUrl;
+
+  if (!src) {
+    // No video at all
+    document.getElementById('noVideo').style.display = 'flex';
+    document.getElementById('nvTitle').textContent = 'No video for "' + item.title + '"';
+    videoEl.style.display = 'none';
+    return;
+  }
+
+  if (isYouTubeUrl(src)) {
+    // YouTube embed
+    isYouTube = true;
+    videoEl.style.display = 'none';
+    iframeEl.style.display = 'block';
+    const ytId = extractYtId(src);
+    iframeEl.src = `https://www.youtube.com/embed/${ytId}?autoplay=1&controls=1&rel=0&modestbranding=1`;
+    // For YouTube we hide our custom controls
+    document.getElementById('controls').style.display = 'none';
+    document.getElementById('topBar').style.opacity = '1';
+    player.classList.add('show-ui');
+    player.style.cursor = 'default';
+  } else {
+    // Direct video
+    videoEl.src = src;
+    videoEl.play().catch(() => {});
+    setupVideoEvents();
+  }
+
+  // Series episodes
+  if (item.type === 'series' && item.episodes && item.episodes.length) {
+    document.getElementById('epToggleBtn').style.display = 'inline-flex';
+    buildEpPanel(item);
+  }
+}
+
+function isYouTubeUrl(url) {
+  return url && (url.includes('youtube.com') || url.includes('youtu.be'));
+}
+function extractYtId(url) {
+  const match = url.match(/(?:v=|youtu\.be\/)([A-Za-z0-9_-]{11})/);
+  return match ? match[1] : '';
+}
+
+/* ── VIDEO EVENTS ── */
+function setupVideoEvents() {
+  videoEl.addEventListener('timeupdate', onTimeUpdate);
+  videoEl.addEventListener('progress', onProgress);
+  videoEl.addEventListener('ended', onEnded);
+  videoEl.addEventListener('play', () => { document.getElementById('playPauseBtn').textContent = '⏸'; flashCentre('⏸'); });
+  videoEl.addEventListener('pause', () => { document.getElementById('playPauseBtn').textContent = '▶'; flashCentre('▶'); });
+  videoEl.addEventListener('click', togglePlay);
+}
+
+function onTimeUpdate() {
+  const cur = videoEl.currentTime, dur = videoEl.duration || 1;
+  const pct = (cur / dur) * 100;
+  document.getElementById('progBar').style.width = pct + '%';
+  document.getElementById('progThumb').style.left = pct + '%';
+  document.getElementById('timeDisplay').textContent = fmt(cur) + ' / ' + fmt(dur);
+  // Show next ep card 30s before end
+  if (item && item.episodes && dur > 0 && dur - cur < 30 && dur - cur > 5) {
+    showNextEpCard();
+  } else {
+    document.getElementById('nextEpCard').classList.remove('show');
+  }
+}
+
+function onProgress() {
+  if (!videoEl.buffered.length) return;
+  const pct = (videoEl.buffered.end(videoEl.buffered.length - 1) / (videoEl.duration || 1)) * 100;
+  document.getElementById('bufBar').style.width = pct + '%';
+}
+
+function onEnded() {
+  if (item && item.episodes && currentEpIdx < item.episodes.length - 1) {
+    showNextEpCard();
+  }
+}
+
+/* ── CONTROLS ── */
+function togglePlay() {
+  if (videoEl.paused) videoEl.play();
+  else videoEl.pause();
+}
+
+function skip(sec) {
+  videoEl.currentTime = Math.max(0, Math.min(videoEl.duration, videoEl.currentTime + sec));
+  const side = sec > 0 ? 'Right' : 'Left';
+  const el = document.getElementById('skip' + side);
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 700);
+}
+
+function toggleMute() {
+  videoEl.muted = !videoEl.muted;
+  document.getElementById('muteBtn').textContent = videoEl.muted ? '🔇' : '🔊';
+}
+
+function setVolume(v) {
+  videoEl.volume = v;
+  videoEl.muted = v == 0;
+  document.getElementById('muteBtn').textContent = v == 0 ? '🔇' : (v < 0.5 ? '🔉' : '🔊');
+}
+
+function cycleSpeed() {
+  speedIdx = (speedIdx + 1) % speeds.length;
+  videoEl.playbackRate = speeds[speedIdx];
+  document.getElementById('speedBtn').textContent = speeds[speedIdx] + '×';
+}
+
+function toggleSubs() {}
+
+function toggleFullscreen() {
+  if (!document.fullscreenElement) player.requestFullscreen();
+  else document.exitFullscreen();
+}
+
+/* ── TIMELINE ── */
+function seekClick(e) {
+  if (isYouTube) return;
+  const rect = e.currentTarget.getBoundingClientRect();
+  const pct = (e.clientX - rect.left) / rect.width;
+  videoEl.currentTime = pct * (videoEl.duration || 0);
+}
+function timelineHover(e) {
+  if (!videoEl.duration) return;
+  const rect = e.currentTarget.getBoundingClientRect();
+  const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+  const tt = document.getElementById('timeTooltip');
+  tt.textContent = fmt(pct * videoEl.duration);
+  tt.style.left = (pct * 100) + '%';
+}
+function timelineLeave() {}
+
+/* ── UI HIDE/SHOW ── */
+function showUI() {
+  player.classList.add('show-ui'); player.classList.remove('hide-ui');
+  clearTimeout(hideTimer);
+  hideTimer = setTimeout(hideUI, 3500);
+}
+function hideUI() {
+  if (!videoEl.paused && !isYouTube) {
+    player.classList.remove('show-ui'); player.classList.add('hide-ui');
+  }
+}
+player.addEventListener('mousemove', showUI);
+player.addEventListener('mousedown', showUI);
+
+/* ── CENTRE FLASH ── */
+function flashCentre(icon) {
+  const el = document.getElementById('centreFlash');
+  el.textContent = icon; el.style.opacity = '1';
+  setTimeout(() => { el.style.opacity = '0'; }, 600);
+}
+
+/* ── EPISODES PANEL ── */
+function buildEpPanel(item) {
+  const list = document.getElementById('epPanelList');
+  list.innerHTML = '';
+  (item.episodes || []).forEach((ep, i) => {
+    const div = document.createElement('div');
+    div.className = 'ep-panel-item' + (i === currentEpIdx ? ' active' : '');
+    div.dataset.idx = i;
+    div.innerHTML = `
+      <div class="ep-panel-thumb">
+        <div style="width:100%;height:100%;background:#2a2a2a;display:flex;align-items:center;justify-content:center;font-size:1.2rem">📺</div>
+      </div>
+      <div class="ep-panel-info">
+        <div class="ep-panel-name">S${ep.s}:E${ep.e} – ${ep.title}</div>
+        <div class="ep-panel-meta">${ep.dur || ''}</div>
+        <div class="ep-panel-prog"><div class="ep-panel-prog-fill" style="width:${i < currentEpIdx ? 100 : 0}%"></div></div>
+      </div>`;
+    div.onclick = () => playEp(i);
+    list.appendChild(div);
+  });
+  // Set top episode label
+  updateEpLabel();
+}
+
+function playEp(idx) {
+  if (!item || !item.episodes) return;
+  currentEpIdx = idx;
+  const ep = item.episodes[idx];
+  document.getElementById('nextEpCard').classList.remove('show');
+  updateEpLabel();
+  if (ep.videoUrl) {
+    videoEl.src = ep.videoUrl; videoEl.play();
+  } else if (item.videoUrl) {
+    videoEl.src = item.videoUrl; videoEl.play();
+  }
+  document.querySelectorAll('.ep-panel-item').forEach((el, i) => {
+    el.classList.toggle('active', i === idx);
+  });
+  toggleEpPanel();
+}
+
+function updateEpLabel() {
+  if (!item || !item.episodes) return;
+  const ep = item.episodes[currentEpIdx];
+  if (ep) document.getElementById('topEpisode').textContent = `S${ep.s}:E${ep.e} – ${ep.title}`;
+}
+
+function toggleEpPanel() {
+  document.getElementById('epPanel').classList.toggle('open');
+}
+
+function showNextEpCard() {
+  if (!item || !item.episodes || currentEpIdx >= item.episodes.length - 1) return;
+  const next = item.episodes[currentEpIdx + 1];
+  document.getElementById('nextEpTitle').textContent = `S${next.s}:E${next.e} – ${next.title}`;
+  document.getElementById('nextEpCard').classList.add('show');
+}
+
+function playNextEp() {
+  playEp(currentEpIdx + 1);
+}
+
+/* ── KEYBOARD ── */
+document.addEventListener('keydown', e => {
+  if (isYouTube) return;
+  switch (e.code) {
+    case 'Space': e.preventDefault(); togglePlay(); break;
+    case 'ArrowLeft': skip(-10); break;
+    case 'ArrowRight': skip(10); break;
+    case 'KeyF': toggleFullscreen(); break;
+    case 'KeyM': toggleMute(); break;
+    case 'Escape': history.back(); break;
+  }
+});
+
+/* ── HELPERS ── */
+function fmt(s) {
+  if (!s || isNaN(s)) return '0:00';
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = Math.floor(s % 60);
+  return h > 0 ? `${h}:${pad(m)}:${pad(sec)}` : `${m}:${pad(sec)}`;
+}
+function pad(n) { return String(n).padStart(2, '0'); }
+
+function toggleKbHint() {
+  document.getElementById('kbHint').classList.toggle('show');
+}
+
+/* ── SAVE PROGRESS ── */
+window.addEventListener('beforeunload', saveProgress);
+function saveProgress() {
+  if (!item || isYouTube || !videoEl.duration) return;
+  const progress = Math.round((videoEl.currentTime / videoEl.duration) * 100);
+  let cw = JSON.parse(localStorage.getItem('cinewave_continue') || '[]');
+  const idx = cw.findIndex(c => c.id === item.id);
+  const entry = { id: item.id, progress, episode: item.episodes ? `S${item.episodes[currentEpIdx]?.s} E${item.episodes[currentEpIdx]?.e}` : '' };
+  if (idx > -1) cw[idx] = entry; else cw.unshift(entry);
+  localStorage.setItem('cinewave_continue', JSON.stringify(cw.slice(0, 20)));
+}
+</script>
+</body>
+</html>

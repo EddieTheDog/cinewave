@@ -1,0 +1,20 @@
+{
+  "name": "cinewave",
+  "version": "1.0.0",
+  "description": "CineWave - Netflix-style streaming platform on Cloudflare Pages",
+  "private": true,
+  "scripts": {
+    "dev": "npx wrangler pages dev . --port 8788",
+    "deploy": "npx wrangler pages deploy .",
+    "db:init": "npx wrangler d1 execute cinewave-db --file=./schema.sql",
+    "db:create": "npx wrangler d1 create cinewave-db",
+    "r2:create": "npx wrangler r2 bucket create cinewave-videos",
+    "r2:cors": "npx wrangler r2 bucket cors put cinewave-videos --rules cors.json"
+  },
+  "devDependencies": {
+    "wrangler": "^3.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
